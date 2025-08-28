@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Budget Pie Calculator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+      :root{
+        --teal:#3b8693; /* Live */
+        --orange:#e57a2e; /* Give */
+        --olive:#a8b34e; /* Grow */
+        --slate:#5c616a; /* Owe Taxes */
+        --charcoal:#3e3f46; /* Owe Debt */
+      }
+      *{box-sizing:border-box}
+      body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#f6f7fb;color:#0f172a}
+      .wrap{max-width:1040px;margin:32px auto;padding:24px}
+      .card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+      .header{padding:20px 24px;border-bottom:1px solid #eef0f4;display:flex;gap:12px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+      h1{font-size:22px;margin:0;font-weight:800;letter-spacing:.2px}
+      .content{display:grid;grid-template-columns:1.2fr 1fr;gap:20px;padding:20px}
+      @media (max-width:900px){.content{grid-template-columns:1fr}}
+      fieldset{border:none;padding:0;margin:0;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+      @media (max-width:640px){fieldset{grid-template-columns:1fr}}
+      label{font-size:12px;color:#64748b;font-weight:600;display:block;margin-bottom:6px}
+      .row{display:flex;flex-direction:column}
+      input[type="text"]{width:100%;padding:10px 12px;border-radius:12px;border:1px solid #e5e7eb;background:#fff;font-size:15px}
+      input[type="text"]:focus{outline:none;border-color:#94a3b8;box-shadow:0 0 0 4px rgba(148,163,184,.2)}
+      .banner-wrap{display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap}
+      .banner{padding:8px 12px;border-radius:10px;font-weight:600;font-size:14px}
+      .banner.ok{background:#dcfce7;color:#166534}
+      .banner.warn{background:#fef9c3;color:#854d0e}
+      .banner.error{background:#fee2e2;color:#991b1b}
+      .mini-btn{appearance:none;border:1px solid #e5e7eb;background:#111827;color:#fff;border-radius:10px;padding:6px 10px;font-weight:700;cursor:pointer}
+      .mini-btn[disabled]{opacity:.5;cursor:not-allowed}
+      .table{width:100%;border-collapse:collapse;margin-top:12px;font-size:14px}
+      .table th,.table td{padding:10px;border-bottom:1px solid #eef2f7;text-align:right}
+      .table th:first-child,.table td:first-child{text-align:left}
+      canvas{width:100% !important;height:auto !important}
+      .btns{display:flex;gap:8px;flex-wrap:wrap}
+      button{appearance:none;border:1px solid #e5e7eb;background:#111827;color:#fff;border-radius:12px;padding:10px 14px;font-weight:700;cursor:pointer}
+      button.secondary{background:#fff;color:#0f172a}
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="card">
+        <div class="header">
+          <h1>OBCC Budget Pie Calculator</h1>
+          <div class="btns">
+          
+            <button id="share" class="secondary">Share link</button>
+            <button id="reset">Reset</button>
+          </div>
+        </div>
+        <div class="content">
+          <div>
+            <div class="row">
+              <label for="income">Monthly Income</label>
+              <input id="income" class="num" type="text" inputmode="decimal" placeholder="e.g. 5000" />
+              <div class="banner-wrap">
+                <div id="statusBanner" class="banner"></div>
+                <button id="fillRemaining" class="mini-btn">Fill remaining into LIVE</button>
+              </div>
+            </div>
+            <fieldset style="margin-top:14px">
+              <div class="row"><label for="taxes">Owe Taxes</label><input id="taxes" class="num" type="text" inputmode="decimal" placeholder="e.g. 750" /></div>
+              <div class="row"><label for="debt">Owe Debt</label><input id="debt" class="num" type="text" inputmode="decimal" placeholder="e.g. 600" /></div>
+              <div class="row"><label for="give">Give</label><input id="give" class="num" type="text" inputmode="decimal" placeholder="e.g. 500" /></div>
+              <div class="row"><label for="grow">Grow</label><input id="grow" class="num" type="text" inputmode="decimal" placeholder="e.g. 500" /></div>
+              <div class="row"><label for="live">Live</label><input id="live" class="num" type="text" inputmode="decimal" placeholder="e.g. 3000" /></div>
+            </fieldset>
+
+            <table class="table" id="summary">
+              <thead><tr><th>Category</th><th>Amount</th><th>% of Income</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+
+          <div>
+            <canvas id="pie"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chart.js + DataLabels -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    <script>
+      // Register DataLabels + center text plugin
+      Chart.register(ChartDataLabels);
+      const centerPlugin = {
+        id: 'centerText',
+        afterDraw(c) {
+          const {ctx, chartArea} = c;
+          const x = (chartArea.left + chartArea.right) / 2;
+          const y = (chartArea.top + chartArea.bottom) / 2;
+          ctx.save();
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillStyle = '#0f172a';
+          ctx.font = '800 18px Inter, sans-serif';
+          ctx.fillText('GOD', x, y - 26);
+          ctx.fillText('OWNS IT', x, y);
+          ctx.fillText('ALL', x, y + 26);
+          ctx.restore();
+        }
+      };
+      Chart.register(centerPlugin);
+
+      const COLORS={LIVE:'#3b8693',GIVE:'#e57a2e',GROW:'#a8b34e',OWE_TAXES:'#5c616a',OWE_DEBT:'#3e3f46'};
+      const $=id=>document.getElementById(id);
+      const fmtMoney=n=>(+n||0).toLocaleString(undefined,{style:'currency',currency:'USD'});
+      const pct=(part,total)=>total>0?(100*part/total):0;
+
+      // numeric-only input sanitizer
+      function sanitize(el){
+        let v=el.value.replace(/[^0-9.]/g,'');
+        const parts=v.split('.');
+        if(parts.length>2) v=parts[0]+'.'+parts.slice(1).join('');
+        if(v.startsWith('.')) v='0'+v;
+        el.value=v;
+      }
+      document.querySelectorAll('.num').forEach(el=>{
+        el.addEventListener('input',()=>{sanitize(el); compute();});
+      });
+
+      function compute(){
+        const income=+($('income').value||0);
+        let live=+($('live').value||0),
+            taxes=+($('taxes').value||0),
+            debt=+($('debt').value||0),
+            give=+($('give').value||0),
+            grow=+($('grow').value||0);
+
+        // Hard cap: active field can't push total over income
+        const activeId=document.activeElement && document.activeElement.id;
+        const fields={live,taxes,debt,give,grow};
+        const total=Object.values(fields).reduce((a,b)=>a+b,0);
+        if(income>0 && total>income && activeId && fields.hasOwnProperty(activeId)){
+          const othersTotal=total - fields[activeId];
+          const remaining=income-othersTotal;
+          $(activeId).value=Math.max(0,remaining).toFixed(2);
+        }
+
+        // recompute after possible cap
+        live=+($('live').value||0);
+        taxes=+($('taxes').value||0);
+        debt=+($('debt').value||0);
+        give=+($('give').value||0);
+        grow=+($('grow').value||0);
+
+        const newTotal=live+taxes+debt+give+grow;
+        const remaining=income-newTotal;
+
+        // Banner
+        const banner=$('statusBanner');
+        banner.textContent=''; banner.className='banner';
+        $('fillRemaining').disabled=!(income>0 && remaining>0.01);
+        if(income>0){
+          if(remaining>0){banner.textContent=`$${remaining.toFixed(2)} not allocated.`;banner.classList.add('warn');}
+          else if(remaining<0){banner.textContent=`Over by $${(-remaining).toFixed(2)}.`;banner.classList.add('error');}
+          else{banner.textContent='All income allocated ✔';banner.classList.add('ok');}
+        }else{
+          banner.textContent='Enter your monthly income to begin.';banner.classList.add('warn');
+        }
+
+        // Table + chart
+        const rows=[{label:'LIVE',amount:live,color:COLORS.LIVE},{label:'GIVE',amount:give,color:COLORS.GIVE},{label:'GROW',amount:grow,color:COLORS.GROW},{label:'OWE TAXES',amount:taxes,color:COLORS.OWE_TAXES},{label:'OWE DEBT',amount:debt,color:COLORS.OWE_DEBT}];
+
+        const tbody=document.querySelector('#summary tbody');
+        tbody.innerHTML='';
+        rows.forEach(r=>{
+          const tr=document.createElement('tr');
+          tr.innerHTML=`<td>${r.label}</td><td>${fmtMoney(r.amount)}</td><td>${pct(r.amount,income).toFixed(1)}%</td>`;
+          tbody.appendChild(tr);
+        });
+
+        updateChart(rows,income);
+      }
+
+      let chart;
+      function updateChart(rows,income){
+        const ctx=$('pie').getContext('2d');
+        const labels=rows.map(r=>r.label);
+        const data={labels,datasets:[{data:rows.map(r=>r.amount),backgroundColor:rows.map(r=>r.color),borderColor:'#2f2f2f',borderWidth:2}]};
+        const options={
+          responsive:true,
+          cutout:'35%',
+          plugins:{
+            legend:{display:false},
+            datalabels:{
+              color:'#fff',
+              font:{weight:'800',size:12},
+              // return an array for multi-line labels
+              formatter:(v,ctx)=>{
+                const p=income?(v/income)*100:0;
+                const l=labels[ctx.dataIndex];
+                return p<6 ? [`${p.toFixed(0)}%`] : [l,`${p.toFixed(0)}%`];
+              },
+              textAlign:'center',
+              anchor:'center',
+              align:'center',
+            }
+          }
+        };
+        if(!chart){chart=new Chart(ctx,{type:'doughnut',data,options});}
+        else{chart.data=data;chart.options=options;chart.update();}
+      }
+
+      // Fill remaining into LIVE
+      $('fillRemaining').addEventListener('click',()=>{
+        const income=+($('income').value||0);
+        const taxes=+($('taxes').value||0);
+        const debt=+($('debt').value||0);
+        const give=+($('give').value||0);
+        const grow=+($('grow').value||0);
+        const remaining=income-(taxes+debt+give+grow);
+        $('live').value=Math.max(0,remaining).toFixed(2);
+        compute();
+      });
+
+      $('reset').addEventListener('click',()=>{document.querySelectorAll('.num').forEach(el=>el.value='');compute();});
+      $('preset').addEventListener('click',()=>{const inc=+($('income').value||0);if(!inc){alert('Enter income first');return;}$('give').value=(inc*0.10).toFixed(2);$('grow').value=(inc*0.10).toFixed(2);$('taxes').value=(inc*0.15).toFixed(2);$('debt').value=(inc*0.15).toFixed(2);compute();});
+      $('share').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(location.href);alert('Link copied!');}catch{prompt('Copy link:',location.href);}});
+      compute();
+    </script>
+  </body>
+</html>
