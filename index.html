@@ -34,8 +34,8 @@
       .banner.ok{background:#dcfce7;color:#166534}
       .banner.warn{background:#fef9c3;color:#854d0e}
       .banner.error{background:#fee2e2;color:#991b1b}
-      .mini-btn {appearance: none;border: none;background: var(--teal); /* match LIVE slice */color: #fff;border-radius: 10px;padding: 6px 12px;font-weight: 700;cursor: pointer;transition: background 0.2s ease;}
-      .mini-btn:hover:not([disabled]) {background: #32727d; /* slightly darker teal on hover */}
+      .mini-btn {appearance: none;border: none;background: var(--teal); color: #fff;border-radius: 10px;padding: 6px 12px;font-weight: 700;cursor: pointer;transition: background 0.2s ease;}
+      .mini-btn:hover:not([disabled]) {background: #32727d;}
       .mini-btn[disabled] {opacity: 0.5;cursor: not-allowed;}
       .table{width:100%;border-collapse:collapse;margin-top:12px;font-size:14px}
       .table th,.table td{padding:10px;border-bottom:1px solid #eef2f7;text-align:right}
@@ -44,6 +44,60 @@
       .btns{display:flex;gap:8px;flex-wrap:wrap}
       button{appearance:none;border:1px solid #e5e7eb;background:#111827;color:#fff;border-radius:12px;padding:10px 14px;font-weight:700;cursor:pointer}
       button.secondary{background:#fff;color:#0f172a}
+
+      /* swatch for table labels */
+      .swatch{
+        display:inline-block;
+        width:12px;height:12px;
+        border-radius:3px; /* 50% for circle, 3px for square */
+        margin-right:8px;
+        vertical-align:-2px;
+      }
+
+      /* HELP ICON + TOOLTIP */
+      .help {
+        display:inline-block;
+        width:16px;height:16px;
+        margin-left:6px;
+        border-radius:50%;
+        background:#cbd5e1;
+        color:#0f172a;
+        font-size:12px;
+        font-weight:700;
+        line-height:16px;
+        text-align:center;
+        cursor:pointer;
+        position:relative;
+      }
+      .help:hover .tooltip,
+      .help:focus .tooltip {
+        opacity:1;
+        visibility:visible;
+      }
+      .tooltip {
+        position:absolute;
+        bottom:125%; left:50%; transform:translateX(-50%);
+        background:#111827;
+        color:#fff;
+        font-size:12px;
+        padding:6px 8px;
+        border-radius:6px;
+        width:200px;
+        text-align:center;
+        line-height:1.4;
+        opacity:0;
+        visibility:hidden;
+        transition:opacity 0.2s ease;
+        z-index:100;
+      }
+      .tooltip::after {
+        content:"";
+        position:absolute;
+        top:100%; left:50%; transform:translateX(-50%);
+        border-width:6px;
+        border-style:solid;
+        border-color:#111827 transparent transparent transparent;
+      }
     </style>
   </head>
   <body>
@@ -52,7 +106,6 @@
         <div class="header">
           <h1>OBCC Budget Pie Calculator</h1>
           <div class="btns">
-          
             <button id="share" class="secondary">Share link</button>
             <button id="reset">Reset</button>
           </div>
@@ -60,7 +113,7 @@
         <div class="content">
           <div>
             <div class="row">
-              <label for="income">Monthly Income</label>
+              <label for="income">START HERE: Monthly Income</label>
               <input id="income" class="num" type="text" inputmode="decimal" placeholder="e.g. 5000" />
               <div class="banner-wrap">
                 <div id="statusBanner" class="banner"></div>
@@ -68,11 +121,40 @@
               </div>
             </div>
             <fieldset style="margin-top:14px">
-              <div class="row"><label for="taxes">Owe Taxes</label><input id="taxes" class="num" type="text" inputmode="decimal" placeholder="e.g. 750" /></div>
-              <div class="row"><label for="debt">Owe Debt</label><input id="debt" class="num" type="text" inputmode="decimal" placeholder="e.g. 600" /></div>
-              <div class="row"><label for="give">Give</label><input id="give" class="num" type="text" inputmode="decimal" placeholder="e.g. 500" /></div>
-              <div class="row"><label for="grow">Grow</label><input id="grow" class="num" type="text" inputmode="decimal" placeholder="e.g. 500" /></div>
-              <div class="row"><label for="live">Live</label><input id="live" class="num" type="text" inputmode="decimal" placeholder="e.g. 3000" /></div>
+              <div class="row">
+                <label for="taxes">Owe Taxes</label>
+                <input id="taxes" class="num" type="text" inputmode="decimal" placeholder="e.g. 750" />
+              </div>
+
+              <div class="row">
+                <label for="debt">
+                  Owe Debt
+                  <span class="help" tabindex="0" aria-label="Help: Owe Debt">?
+                    <span class="tooltip">Monthly payments excluding mortgage</span>
+                  </span>
+                </label>
+                <input id="debt" class="num" type="text" inputmode="decimal" placeholder="e.g. 600" />
+              </div>
+
+              <div class="row">
+                <label for="give">Give</label>
+                <input id="give" class="num" type="text" inputmode="decimal" placeholder="e.g. 500" />
+              </div>
+
+              <div class="row">
+                <label for="grow">
+                  Grow
+                  <span class="help" tabindex="0" aria-label="Help: Grow">?
+                    <span class="tooltip">Retirement, savings, etc.</span>
+                  </span>
+                </label>
+                <input id="grow" class="num" type="text" inputmode="decimal" placeholder="e.g. 500" />
+              </div>
+
+              <div class="row">
+                <label for="live">Live</label>
+                <input id="live" class="num" type="text" inputmode="decimal" placeholder="e.g. 3000" />
+              </div>
             </fieldset>
 
             <table class="table" id="summary">
@@ -171,13 +253,23 @@
         }
 
         // Table + chart
-        const rows=[{label:'LIVE',amount:live,color:COLORS.LIVE},{label:'GIVE',amount:give,color:COLORS.GIVE},{label:'GROW',amount:grow,color:COLORS.GROW},{label:'OWE TAXES',amount:taxes,color:COLORS.OWE_TAXES},{label:'OWE DEBT',amount:debt,color:COLORS.OWE_DEBT}];
+        const rows=[
+          {label:'LIVE',amount:live,color:COLORS.LIVE},
+          {label:'GIVE',amount:give,color:COLORS.GIVE},
+          {label:'GROW',amount:grow,color:COLORS.GROW},
+          {label:'OWE TAXES',amount:taxes,color:COLORS.OWE_TAXES},
+          {label:'OWE DEBT',amount:debt,color:COLORS.OWE_DEBT}
+        ];
 
         const tbody=document.querySelector('#summary tbody');
         tbody.innerHTML='';
         rows.forEach(r=>{
           const tr=document.createElement('tr');
-          tr.innerHTML=`<td>${r.label}</td><td>${fmtMoney(r.amount)}</td><td>${pct(r.amount,income).toFixed(1)}%</td>`;
+          tr.innerHTML = `
+            <td><span class="swatch" style="background:${r.color}" aria-hidden="true"></span>${r.label}</td>
+            <td>${fmtMoney(r.amount)}</td>
+            <td>${pct(r.amount,income).toFixed(1)}%</td>
+          `;
           tbody.appendChild(tr);
         });
 
